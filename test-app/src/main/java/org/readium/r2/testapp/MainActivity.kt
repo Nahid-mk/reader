@@ -10,43 +10,34 @@ import android.os.Bundle
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.NavController
-import androidx.navigation.fragment.NavHostFragment
-import androidx.navigation.ui.AppBarConfiguration
-import androidx.navigation.ui.setupActionBarWithNavController
-import androidx.navigation.ui.setupWithNavController
-import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.snackbar.Snackbar
+import org.readium.r2.testapp.bookshelf.BookshelfFragment
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var navController: NavController
     private val viewModel: MainViewModel by viewModels()
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val navView: BottomNavigationView = findViewById(R.id.nav_view)
-        val navHostFragment =
-            supportFragmentManager.findFragmentById(R.id.nav_host_fragment) as NavHostFragment
-        navController = navHostFragment.navController
+        if (savedInstanceState == null) {
+            // Create a bundle to pass the book ID
+            val bundle = Bundle()
+            bundle.putLong("BOOK_ID", 2)
 
-        val appBarConfiguration = AppBarConfiguration(
-            setOf(
-                R.id.navigation_bookshelf,
-                R.id.navigation_catalog_list,
-                R.id.navigation_about
-            )
-        )
-        setupActionBarWithNavController(navController, appBarConfiguration)
-        navView.setupWithNavController(navController)
+            // Create the fragment and set the arguments
+            val fragment = BookshelfFragment()
+            fragment.arguments = bundle
+
+            supportFragmentManager.beginTransaction()
+                .replace(R.id.fragment_container_view, fragment)
+                .commit()
+        }
+
 
         viewModel.channel.receive(this) { handleEvent(it) }
     }
 
-    override fun onSupportNavigateUp(): Boolean {
-        return navController.navigateUp() || super.onSupportNavigateUp()
-    }
 
     private fun handleEvent(event: MainViewModel.Event) {
         when (event) {

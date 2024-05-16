@@ -42,7 +42,7 @@ class ImportActivity : Activity() {
             }
 
         val app = application as Application
-        app.bookshelf.importPublicationFromStorage(uri)
+        app.bookshelf.importPublicationFromStorage(uri) {_ ->}
     }
 
     private fun uriFromIntent(intent: Intent): Uri? =

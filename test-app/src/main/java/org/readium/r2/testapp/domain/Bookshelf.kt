@@ -24,6 +24,7 @@ import org.readium.r2.shared.util.toUrl
 import org.readium.r2.streamer.PublicationOpener
 import org.readium.r2.testapp.data.BookRepository
 import org.readium.r2.testapp.data.model.Book
+import org.readium.r2.testapp.reader.ReaderRepository
 import org.readium.r2.testapp.utils.tryOrLog
 import timber.log.Timber
 
@@ -38,7 +39,7 @@ class Bookshelf(
     private val coverStorage: CoverStorage,
     private val publicationOpener: PublicationOpener,
     private val assetRetriever: AssetRetriever,
-    private val publicationRetriever: PublicationRetriever
+    private val publicationRetriever: PublicationRetriever,
 ) {
     sealed class Event {
         data object ImportPublicationSuccess :
@@ -56,12 +57,14 @@ class Bookshelf(
         MainScope()
 
     fun importPublicationFromStorage(
-        uri: Uri
+        uri: Uri,
+        callBack: (Long?) -> Unit
     ) {
         coroutineScope.launch {
-            addBookFeedback(publicationRetriever.retrieveFromStorage(uri))
+            callBack(addBookFeedbackFromStorage(publicationRetriever.retrieveFromStorage(uri)))
         }
     }
+
 
     fun importPublicationFromOpds(
         publication: Publication
@@ -106,6 +109,72 @@ class Bookshelf(
             .onFailure { channel.send(Event.ImportPublicationError(it)) }
     }
 
+
+    private suspend fun addBookFeedbackFromStorage(
+        retrieverResult: Try<PublicationRetriever.Result, ImportError>
+    ):Long? {
+
+        val  value =  retrieverResult
+            .map { addBookFromStorage(it.publication.toUrl(), it.format, it.coverUrl) }
+            .onSuccess {
+                channel.send(Event.ImportPublicationSuccess)
+            }
+            .onFailure {
+                channel.send(Event.ImportPublicationError(it))
+            }
+            .getOrElse { null }
+        return value
+    }
+
+    private suspend fun addBookFromStorage(
+        url: AbsoluteUrl,
+        format: Format? = null,
+        coverUrl: AbsoluteUrl? = null
+    ): Long? {
+        val asset =
+            if (format == null) {
+                assetRetriever.retrieve(url)
+            } else {
+                assetRetriever.retrieve(url, format)
+            }.getOrElse {
+                return null
+            }
+
+        publicationOpener.open(
+            asset,
+            allowUserInteraction = false
+        ).onSuccess { publication ->
+            val coverFile =
+                coverStorage.storeCover(publication, coverUrl)
+                    .getOrElse {
+                        return null
+                    }
+
+            val id = bookRepository.insertBook(
+                url,
+                asset.format.mediaType,
+                publication,
+                coverFile
+            )
+
+            if (id == -1L) {
+                coverFile.delete()
+                return null
+            }else{
+                return id
+            }
+        }
+            .onFailure {
+                Timber.e("Cannot open publication: $it.")
+                return  null
+            }
+
+        return null
+
+
+
+    }
+
     private suspend fun addBook(
         url: AbsoluteUrl,
         format: Format? = null,
@@ -142,6 +211,7 @@ class Bookshelf(
                 publication,
                 coverFile
             )
+
             if (id == -1L) {
                 coverFile.delete()
                 return Try.failure(
@@ -160,6 +230,7 @@ class Bookshelf(
 
         return Try.success(Unit)
     }
+
 
     suspend fun deleteBook(book: Book) {
         val id = book.id!!

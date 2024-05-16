@@ -32,8 +32,10 @@ class BookshelfViewModel(application: Application) : AndroidViewModel(applicatio
             app.bookshelf.deleteBook(book)
         }
 
-    fun importPublicationFromStorage(uri: Uri) {
-        app.bookshelf.importPublicationFromStorage(uri)
+     fun importPublicationFromStorage(uri: Uri,  callBack: (Long?) -> Unit) {
+        app.bookshelf.importPublicationFromStorage(uri){
+            callBack(it)
+        }
     }
 
     fun addPublicationFromStorage(uri: Uri) {

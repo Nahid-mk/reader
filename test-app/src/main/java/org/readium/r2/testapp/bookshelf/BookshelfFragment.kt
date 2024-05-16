@@ -22,8 +22,10 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.paging.LOGGER
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import kotlin.math.log
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.readium.r2.shared.util.AbsoluteUrl
@@ -53,6 +55,7 @@ class BookshelfFragment : Fragment() {
     private lateinit var sharedStoragePickerLauncher: ActivityResultLauncher<Array<String>>
     private var binding: FragmentBookshelfBinding by viewLifecycle()
     private var onViewAttachedListener: OnViewAttachedListener = OnViewAttachedListener()
+    private var hasOpenedBook = false
 
     private val app: Application
         get() = requireContext().applicationContext as Application
@@ -85,7 +88,12 @@ class BookshelfFragment : Fragment() {
         appStoragePickerLauncher =
             registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
                 uri?.let {
-                    bookshelfViewModel.importPublicationFromStorage(it)
+                    println("URI: $it")
+                    bookshelfViewModel.importPublicationFromStorage(it){ bookId->
+                        if (bookId != null) {
+                            println("Book ID: $bookId")
+                        }
+                    }
                 }
             }
 
@@ -134,6 +142,20 @@ class BookshelfFragment : Fragment() {
                     selected = which
                 }
                 .show()
+        }
+
+//        if (!hasOpenedBook) {
+//            openBookIfNeeded()
+//        }
+
+    }
+
+    private fun openBookIfNeeded() {
+        if (hasOpenedBook) return
+        val bookId = arguments?.getLong("BOOK_ID")
+        if (bookId != null && bookId != 0L) {
+            bookshelfViewModel.openPublication(bookId)
+            hasOpenedBook = true
         }
     }
 
