@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.readium.r2.shared.util.AbsoluteUrl
 import org.readium.r2.testapp.Application
+import org.readium.r2.testapp.MainActivity
 import org.readium.r2.testapp.R
 import org.readium.r2.testapp.data.model.Book
 import org.readium.r2.testapp.databinding.FragmentBookshelfBinding
@@ -91,7 +92,7 @@ class BookshelfFragment : Fragment() {
                     println("URI: $it")
                     bookshelfViewModel.importPublicationFromStorage(it){ bookId->
                         if (bookId != null) {
-                            println("Book ID: $bookId")
+                            bookshelfViewModel.openPublication(bookId)
                         }
                     }
                 }
@@ -192,6 +193,8 @@ class BookshelfFragment : Fragment() {
                     event.arguments
                 )
                 startActivity(intent)
+                requireActivity().finish()
+
             }
         }
     }
